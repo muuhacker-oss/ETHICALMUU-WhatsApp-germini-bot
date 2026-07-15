@@ -94,15 +94,28 @@ async function startBot() {
     auth: state,
     printQRInTerminal: false,
     logger: P({ level: 'error' }),
-    browser: ['ETHICALMUU Bot', 'Chrome', '1.0']
+    browser: ['Ubuntu', 'Chrome', '20.0.04'] // Muhimu kwa Pairing Code kufanya kazi
   });
 
+  // 🔑 NAMBA YAKO YA SIMU KWA AJILI YA PAIRING CODE
+  const MY_PHONE_NUMBER = '255737117253'; 
+
+  if (!state.creds.registered) {
+    setTimeout(async () => {
+      try {
+        let code = await sock.requestPairingCode(MY_PHONE_NUMBER);
+        code = code?.match(/.{1,4}/g)?.join("-") || code;
+        console.log(`\n==============================================`);
+        console.log(`🔑 PAIRING CODE YAKO NI: ${code}`);
+        console.log(`==============================================\n`);
+      } catch (err) {
+        console.log('⚠️ Imefeli kutengeneza pairing code au namba ishaunganishwa tayari.', err);
+      }
+    }, 5000); // Subiri sekunde 5 baada ya kuanza ili kupata pairing code vizuri
+  }
+
   sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect, qr } = update;
-    if (qr) {
-      qrcode.generate(qr, { small: true });
-      console.log('\n📱 SCAN QR CODE HII KWA WHATSAPP!');
-    }
+    const { connection, lastDisconnect } = update;
     if (connection === 'open') {
       console.log('✅ ETHICALMUU AI AMEFUNGUKA!');
     }

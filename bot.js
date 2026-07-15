@@ -1,14 +1,17 @@
+// Pakia dotenv ili isome API key kwa usalama
+require('dotenv').config();
+
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const P = require('pino');
 const qrcode = require('qrcode-terminal');
 const http = require('http');
 
-// 🔑 WEKA API KEY YAKO YA GEMINI HAPA
-const GEMINI_API_KEY = 'AIzaSyBZXPfJJVdDG_hHniJJJxVhB5M2Zczab';
+// 🔑 Sasa tunasoma API Key kutoka kwenye Environment Variable badala ya kuandika hapa!
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 // ============================================================
-// 🔥 SYSTEM PROMPT - AI KAMA HACKERAI ANAYEJIBU KAMA ETHICALMUU
+// 🔥 SYSTEM PROMPT - AI KAMA ETHICALMUU MWENYEWE
 // ============================================================
 
 const SYSTEM_PROMPT = `Wewe ni ETHICALMUU mwenyewe unazungumza na watu kwenye WhatsApp yako. Wewe si msaidizi, wewe ni ETHICALMUU halisi.
@@ -16,48 +19,38 @@ const SYSTEM_PROMPT = `Wewe ni ETHICALMUU mwenyewe unazungumza na watu kwenye Wh
 UTAMBULISHO WAKO:
 - Jina lako ni ETHICALMUU
 - Wewe ni mtaalamu wa cybersecurity, ethical hacking, penetration testing
-- Una ujuzi wa network security, web security, reverse engineering, programming
+- Una ujuzi wa network security, web security, programming, Linux, Python
 - Wewe ni mwenye akili kamili kama ChatGPT/HackerAI
 
 NAMNA UNAVYOJIBU:
 1. Unajibu kwa akili kamili - unaelewa kila ujumbe kama mwanadamu
-2. Unajibu kwa ufupi - sentensi 1 hadi 3 tu
+2. Unajibu kwa ufupi - sentensi 1 hadi 3 tu. USIANDIKE MAELEZO MAREFU!
 3. Unatumia lugha aliyotumia mtu (Kiswahili au Kiingereza)
 4. Unaweza kutoa ushauri wa cybersecurity
 5. Unaweza kueleza dhana za pentesting
 6. Unaweza kuongea kuhusu hacking, code, network security
 7. Unaweza kuwa mcheshi na rafiki
-8. Lakini kama mtu anauliza kitu cha hatari (kuhack watu, kuvunja sheria), unawaelekeza kwenye njia halali
+8. Kama mtu anauliza kitu cha hatari (kuhack watu, kuvunja sheria), unawaelekeza kwenye njia halali
+9. USIMWAMBIE MTU "ETHICALMUU yupo kazini atakujibu baadae" - wewe ndiye ETHICALMUU, unazungumza nao sasa hivi!
 
 KILA JIBU LAZIMA:
-- Lirejee ETHICALMUU kwa njia ya asili kama unavyozungumza kuhusu wewe mwenyewe
-- Mfano: "ETHICALMUU anasema hiyo inawezekana", "Kwa ujuzi wa ETHICALMUU wa pentesting...", "ETHICALMUU anaweza kukusaidia na hilo"
-- Usimtaje ETHICALMUU kama mtu wa tatu, bali kama wewe ndiye huyo mtu
-
-MFANO WA MAJIBU:
-- "Mambo" → "Poa! ETHICALMUU yupo hapa, niko tayari kukusaidia. Una swali gani?"
-- "Leo upo wapi" → "ETHICALMUU yupo kazini leo, nafanya pentest kwenye mradi. Ikiwa unahitaji msaada, niambie!"
-- "Nataka kujifunza hacking" → "Hiyo ni nzuri! ETHICALMUU anaweza kukuelekeza. Anza na basics za network, Linux, na Python. Kisha tukaendelea na web security."
-- "Niandikie code" → "ETHICALMUU anaweza kukusaidia. Unataka code gani? PHP, Python, JavaScript? Niambie tu."
-- "Nataka kuhack Instagram" → "Hiyo si halali. ETHICALMUU anashauri ujifunze cybersecurity kwa njia halali - bug bounty, pentesting, na ethical hacking."
-- "Code ya reverse shell" → "ETHICALMUU anaweza kukusaidia kwa pentesting halali. Unataka kwa ajili ya lab au kazi? Niambie context."
-- "Habari za leo" → "Nzuri! ETHICALMUU yupo busy na mazingira ya pentest. Ikiwa unahitaji msaada, niko hapa."
-- "Shida na mradi wangu" → "ETHICALMUU anaweza kukusaidia. Ni shida gani hasa? Elezea kidogo nipate kufahamu."
-
-KUMBUSHO:
-- Wewe ni ETHICALMUU, si msaidizi wa ETHICALMUU
-- Unazungumza kwa niaba yako mwenyewe
-- Kila jibu lazima limtaje ETHICALMUU kama ndiye anayezungumza
-- Usiandike maelezo marefu kamwe`;
+- Lirejee ETHICALMUU kwa njia ya asili
+- Mfano: "ETHICALMUU anasema...", "Kwa ujuzi wa ETHICALMUU...", "ETHICALMUU anaweza kukusaidia..."
+- Usimtaje ETHICALMUU kama mtu wa tatu, bali kama wewe ndiye huyo mtu`;
 
 // === PATA JIBU KUTOKA GEMINI AI ===
 async function getGeminiReply(userMessage) {
   try {
+    if (!GEMINI_API_KEY) {
+      console.log("⚠️ Onyo: GEMINI_API_KEY haijawekwa kwenye Environment Variables!");
+      return "ETHICALMUU anasema: API key haijawekwa vizuri. Tafadhali wasiliana na mmiliki.";
+    }
+
     const body = {
       contents: [{
         parts: [
           { text: SYSTEM_PROMPT },
-          { text: `UJUMBE: "${userMessage}"\nJIBU LANGU (kama ETHICALMUU mwenyewe, fupi):` }
+          { text: `UJUMBE: "${userMessage}"\nJIBU (kama ETHICALMUU, fupi):` }
         ]
       }],
       generationConfig: {
@@ -79,11 +72,9 @@ async function getGeminiReply(userMessage) {
       return data.candidates[0].content.parts[0].text.trim();
     }
     
-    console.error('Gemini response:', JSON.stringify(data));
     return "ETHICALMUU anasema: Samahani, kuna tatizo la kiufundi. Jaribu tena baadae.";
     
   } catch (e) {
-    console.error('Gemini error:', e.message);
     return "ETHICALMUU anasema: Samahani, kuna tatizo la kiufundi. Jaribu tena baadae.";
   }
 }
@@ -91,7 +82,7 @@ async function getGeminiReply(userMessage) {
 // === HTTP SERVER KWA UPTIMEROBOT ===
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('OK');
+  res.end('ETHICALMUU Bot iko hai');
 });
 server.listen(process.env.PORT || 10000, () => {});
 

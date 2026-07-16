@@ -88,19 +88,22 @@ server.listen(process.env.PORT || 10000, () => {});
 
 // === WHATSAPP BOT ===
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState('auth');
+  // Tunatumia folder jipya la siri linaloitwa 'auth_session' ili kukwepa mafaili mabovu ya nyuma
+  const { state, saveCreds } = await useMultiFileAuthState('auth_session');
   
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
     logger: P({ level: 'error' }),
-    browser: ['Ubuntu', 'Chrome', '20.0.04'] // Muhimu kwa Pairing Code kufanya kazi
+    // Tumetumia browser string inayotambulika vizuri zaidi na mifumo ya WhatsApp Web
+    browser: ['Mac OS', 'Chrome', '10.15.7'] 
   });
 
   // 🔑 NAMBA YAKO YA SIMU KWA AJILI YA PAIRING CODE
   const MY_PHONE_NUMBER = '255737117253'; 
 
-  if (!state.creds.registered) {
+  if (!sock.authState.creds.registered) {
+    // Tunasubiri sekunde 10 ili kuhakikisha socket imejiweka sawa mtandaoni kabla ya kuomba kodi
     setTimeout(async () => {
       try {
         let code = await sock.requestPairingCode(MY_PHONE_NUMBER);
@@ -109,9 +112,9 @@ async function startBot() {
         console.log(`🔑 PAIRING CODE YAKO NI: ${code}`);
         console.log(`==============================================\n`);
       } catch (err) {
-        console.log('⚠️ Imefeli kutengeneza pairing code au namba ishaunganishwa tayari.', err);
+        console.log('⚠️ Imefeli kuomba pairing code. Sababu:', err.message || err);
       }
-    }, 5000); // Subiri sekunde 5 baada ya kuanza ili kupata pairing code vizuri
+    }, 10000); 
   }
 
   sock.ev.on('connection.update', async (update) => {
@@ -121,7 +124,10 @@ async function startBot() {
     }
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) startBot();
+      if (shouldReconnect) {
+        console.log('🔄 Muunganisho umekatika. Inajaribu kuunganisha tena...');
+        startBot();
+      }
     }
   });
 

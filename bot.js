@@ -5,89 +5,40 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = requi
 const P = require('pino');
 const http = require('http');
 
-// 🔑 Sasa tunasoma API Key kutoka kwenye Environment Variable badala ya kuandika hapa!
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-// ============================================================
-// 🔥 SYSTEM PROMPT - AI KAMA ETHICALMUU MWENYEWE
-// ============================================================
+// === SYSTEM PROMPT ===
+const SYSTEM_PROMPT = `Wewe ni ETHICALMUU mwenye ujuzi wa cybersecurity. Unajibu kwa ufupi sana (sentensi 1 hadi 3).`;
 
-const SYSTEM_PROMPT = `Wewe ni ETHICALMUU mwenyewe unazungumza na watu kwenye WhatsApp yako. Wewe si msaidizi, wewe ni ETHICALMUU halisi.
-
-UTAMBULISHO WAKO:
-- Jina lako ni ETHICALMUU
-- Wewe ni mtaalamu wa cybersecurity, ethical hacking, penetration testing
-- Una ujuzi wa network security, web security, programming, Linux, Python
-- Wewe ni mwenye akili kamili kama ChatGPT/HackerAI
-
-NAMNA UNAVYOJIBU:
-1. Unajibu kwa akili kamili - unaelewa kila ujumbe kama mwanadamu
-2. Unajibu kwa ufupi - sentensi 1 hadi 3 tu. USIANDIKE MAELEZO MAREFU!
-3. Unatumia lugha aliyotumia mtu (Kiswahili au Kiingereza)
-4. Unaweza kutoa ushauri wa cybersecurity
-5. Unaweza kueleza dhana za pentesting
-6. Unaweza kuongea kuhusu hacking, code, network security
-7. Unaweza kuwa mcheshi na rafiki
-8. Kama mtu anauliza kitu cha hatari (kuhack watu, kuvunja sheria), unawaelekeza kwenye njia halali
-9. USIMWAMBIE MTU "ETHICALMUU yupo kazini atakujibu baadae" - wewe ndiye ETHICALMUU, unazungumza nao sasa hivi!
-
-KILA JIBU LAZIMA:
-- Lirejee ETHICALMUU kwa njia ya asili
-- Mfano: "ETHICALMUU anasema...", "Kwa ujuzi wa ETHICALMUU...", "ETHICALMUU anaweza kukusaidia..."
-- Usimtaje ETHICALMUU kama mtu wa tatu, bali kama wewe ndiye huyo mtu`;
-
-// === PATA JIBU KUTOKA GEMINI AI ===
 async function getGeminiReply(userMessage) {
   try {
-    if (!GEMINI_API_KEY) {
-      console.log("⚠️ Onyo: GEMINI_API_KEY haijawekwa kwenye Environment Variables!");
-      return "ETHICALMUU anasema: API key haijawekwa vizuri. Tafadhali wasiliana na mmiliki.";
-    }
-
+    if (!GEMINI_API_KEY) return "ETHICALMUU anasema: API key haijawekwa vizuri.";
     const body = {
-      contents: [{
-        parts: [
-          { text: SYSTEM_PROMPT },
-          { text: `UJUMBE: "${userMessage}"\nJIBU (kama ETHICALMUU, fupi):` }
-        ]
-      }],
-      generationConfig: {
-        maxOutputTokens: 150,
-        temperature: 0.8,
-        topP: 0.9
-      }
+      contents: [{ parts: [{ text: SYSTEM_PROMPT }, { text: `UJUMBE: "${userMessage}"\nJIBU:` }] }]
     };
-
     const res = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-
     const data = await res.json();
-    
-    if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-      return data.candidates[0].content.parts[0].text.trim();
-    }
-    
-    return "ETHICALMUU anasema: Samahani, kuna tatizo la kiufundi. Jaribu tena baadae.";
-    
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "ETHICALMUU yupo imara.";
   } catch (e) {
-    return "ETHICALMUU anasema: Samahani, kuna tatizo la kiufundi. Jaribu tena baadae.";
+    return "ETHICALMUU yupo imara lakini kuna hitilafu ya mtandao.";
   }
 }
 
-// === HTTP SERVER KWA UPTIMEROBOT ===
+// === HTTP SERVER ===
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('ETHICALMUU Bot iko hai');
 });
-server.listen(process.env.PORT || 10000, () => {});
+server.listen(process.env.PORT || 10000);
 
-// === WHATSAPP BOT ===
+// === BOT MAIN ===
 let isReconnecting = false;
-let pairingTimeout = null; // Kuzuia maombi mengi ya pairing code kwa wakati mmoja
+let pairingTimeout = null;
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_session');
@@ -95,14 +46,12 @@ async function startBot() {
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
-    logger: P({ level: 'fatal' }), // Zima logs zisizo na msingi kabisa
+    logger: P({ level: 'fatal' }),
     browser: ['Ubuntu', 'Chrome', '20.0.04'] 
   });
 
-  // 🔑 NAMBA YAKO YA SIMU KWA AJILI YA PAIRING CODE
   const MY_PHONE_NUMBER = '255737117253'; 
 
-  // Futa timeout yoyote ya nyuma kuzuia error 405
   if (pairingTimeout) clearTimeout(pairingTimeout);
 
   if (!state.creds.registered) {
@@ -115,9 +64,9 @@ async function startBot() {
         console.log(`🔑 PAIRING CODE YAKO NI: ${code}`);
         console.log(`==============================================\n`);
       } catch (err) {
-        console.log('⚠️ Imeshindwa kuomba Pairing Code. Hakikisha namba yako haina muunganisho mwingine wa sasa.');
+        console.log('⚠️ Imeshindwa kuomba Pairing Code kwa sasa hivi.');
       }
-    }, 12000); // Tumesubiri sekunde 12 ili socket iwe imara 100%
+    }, 15000); // Sekunde 15 ili kuhakikisha muunganisho uko salama kabisa
   }
 
   sock.ev.on('connection.update', async (update) => {
@@ -133,18 +82,21 @@ async function startBot() {
       if (pairingTimeout) clearTimeout(pairingTimeout);
       
       const statusCode = (lastDisconnect.error)?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       
+      // 🛑 KAMA KUNA MGONGANO (405), USIJIWASHE TENA ILI KUZUIA BAN
+      if (statusCode === 405) {
+        console.log('⚠️ ERROR 405: Kuna bot nyingine inayotumia namba hii kwa sasa kwenye Render. Bot imesitishwa kwa usalama.');
+        return;
+      }
+      
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       if (shouldReconnect && !isReconnecting) {
         isReconnecting = true;
-        console.log(`🔄 Muunganisho umefungwa (Sababu: ${statusCode}). Inasubiri sekunde 15 kabla ya kujaribu tena...`);
-        
+        console.log(`🔄 Muunganisho umefungwa (${statusCode}). Inajaribu tena baada ya sekunde 15...`);
         setTimeout(() => {
           isReconnecting = false;
           startBot();
-        }, 15000); // Kuongeza muda hapa kunazuia kabisa loop na error ya 405
-      } else if (!shouldReconnect) {
-        console.log('❌ Umelogiwa nje ya WhatsApp.');
+        }, 15000);
       }
     }
   });
@@ -153,27 +105,16 @@ async function startBot() {
 
   sock.ev.on('messages.upsert', async (msg) => {
     const message = msg.messages[0];
-    if (message.key.fromMe) return;
-    if (!message.message || message.key.remoteJid === 'status@broadcast') return;
-    if (message.key.remoteJid.endsWith('@g.us')) return;
+    if (message.key.fromMe || !message.message || message.key.remoteJid === 'status@broadcast' || message.key.remoteJid.endsWith('@g.us')) return;
     
     const sender = message.key.remoteJid;
     const text = message.message.conversation || message.message.extendedTextMessage?.text || '';
     
     if (text.trim()) {
-      console.log(`\n📩 Kutoka: ${sender}`);
-      console.log(`💬 "${text}"`);
-      
       const reply = await getGeminiReply(text);
-      console.log(`🤖 "${reply}"`);
-      
       await sock.sendMessage(sender, { text: reply });
     }
   });
 }
 
-console.log('╔══════════════════════════════════════╗');
-console.log('║ ETHICALMUU AI - KAMA HACKERAI       ║');
-console.log('║ Anayezungumza kama ETHICALMUU       ║');
-console.log('╚══════════════════════════════════════╝');
 startBot();

@@ -86,7 +86,8 @@ const server = http.createServer((req, res) => {
 server.listen(process.env.PORT || 10000, () => {});
 
 // === WHATSAPP BOT ===
-let isReconnecting = false; // Kuzuia loop ya kujaribu kuunganisha mfululizo
+let isReconnecting = false;
+let pairingTimeout = null; // Kuzuia maombi mengi ya pairing code kwa wakati mmoja
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_session');
@@ -94,26 +95,29 @@ async function startBot() {
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
-    logger: P({ level: 'fatal' }), // Zima pino logs zisizo na msingi ili kuona pairing code vizuri
-    browser: ['Mac OS', 'Chrome', '10.15.7'] 
+    logger: P({ level: 'fatal' }), // Zima logs zisizo na msingi kabisa
+    browser: ['Ubuntu', 'Chrome', '20.0.04'] 
   });
 
   // 🔑 NAMBA YAKO YA SIMU KWA AJILI YA PAIRING CODE
   const MY_PHONE_NUMBER = '255737117253'; 
 
-  if (!sock.authState.creds.registered) {
-    // Tunasubiri sekunde 10 ili kutoa nafasi kwa socket kujiweka vizuri kwanza
-    setTimeout(async () => {
+  // Futa timeout yoyote ya nyuma kuzuia error 405
+  if (pairingTimeout) clearTimeout(pairingTimeout);
+
+  if (!state.creds.registered) {
+    pairingTimeout = setTimeout(async () => {
       try {
+        console.log("🔄 Inatengeneza pairing code, tafadhali subiri...");
         let code = await sock.requestPairingCode(MY_PHONE_NUMBER);
         code = code?.match(/.{1,4}/g)?.join("-") || code;
         console.log(`\n==============================================`);
         console.log(`🔑 PAIRING CODE YAKO NI: ${code}`);
         console.log(`==============================================\n`);
       } catch (err) {
-        console.log('⚠️ Imefeli kuomba pairing code kwa sasa hivi. Mtandao una changamoto, itajaribu upya.');
+        console.log('⚠️ Imeshindwa kuomba Pairing Code. Hakikisha namba yako haina muunganisho mwingine wa sasa.');
       }
-    }, 10000); 
+    }, 12000); // Tumesubiri sekunde 12 ili socket iwe imara 100%
   }
 
   sock.ev.on('connection.update', async (update) => {
@@ -121,24 +125,26 @@ async function startBot() {
     
     if (connection === 'open') {
       console.log('✅ ETHICALMUU AI AMEFUNGUKA!');
+      if (pairingTimeout) clearTimeout(pairingTimeout);
       isReconnecting = false;
     }
     
     if (connection === 'close') {
+      if (pairingTimeout) clearTimeout(pairingTimeout);
+      
       const statusCode = (lastDisconnect.error)?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       
       if (shouldReconnect && !isReconnecting) {
         isReconnecting = true;
-        console.log(`🔄 Muunganisho umefungwa (Sababu code: ${statusCode}). Inasubiri sekunde 10 kabla ya kujaribu tena...`);
+        console.log(`🔄 Muunganisho umefungwa (Sababu: ${statusCode}). Inasubiri sekunde 15 kabla ya kujaribu tena...`);
         
-        // Tunampa sekunde 10 ili kusafisha muunganisho uliopita kabla ya kuanza upya
         setTimeout(() => {
           isReconnecting = false;
           startBot();
-        }, 10000);
+        }, 15000); // Kuongeza muda hapa kunazuia kabisa loop na error ya 405
       } else if (!shouldReconnect) {
-        console.log('❌ Umelogiwa nje ya WhatsApp. Tafadhali futa faili za auth na uanze upya.');
+        console.log('❌ Umelogiwa nje ya WhatsApp.');
       }
     }
   });

@@ -1,12 +1,12 @@
-// Pakia dotenv ili isome API key kwa usalama
-require('dotenv').config();
+import dotenv from 'dotenv';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import P from 'pino';
+import http from 'http';
 
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const P = require('pino');
-const http = require('http');
+dotenv.config();
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// Tumia Endpoint rasmi ya Gemini 2.0 Flash
+// Endpoint ya Gemini 2.0 Flash
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 // === SYSTEM PROMPT ===
@@ -51,7 +51,7 @@ async function getGeminiReply(userMessage) {
   }
 }
 
-// === HTTP SERVER (Inahitajika na Render) ===
+// === HTTP SERVER (Inahitajika na Render kuzuia Web Service isife) ===
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('ETHICALMUU Bot iko hai');
@@ -67,7 +67,6 @@ let isReconnecting = false;
 let pairingTimeout = null;
 
 async function startBot() {
-  // Folder la hifadhi ya Session
   const { state, saveCreds } = await useMultiFileAuthState('auth_session');
 
   const sock = makeWASocket({
@@ -77,6 +76,7 @@ async function startBot() {
     browser: ['Ubuntu', 'Chrome', '20.0.04'] 
   });
 
+  // Namba yako ya WhatsApp
   const MY_PHONE_NUMBER = '255737117253'; 
 
   if (pairingTimeout) clearTimeout(pairingTimeout);

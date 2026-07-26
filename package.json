@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "ETHICALMUU WhatsApp AI Bot - Powered by Google Gemini",
   "main": "bot.js",
+  "type": "module",
   "scripts": {
     "start": "node bot.js"
   },
